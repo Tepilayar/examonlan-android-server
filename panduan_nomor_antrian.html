@@ -1,0 +1,1489 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Panduan Sistem Antrian – Nomor Antrian</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0b0f1a;
+      --bg2:       #111827;
+      --bg3:       #1a2235;
+      --bg4:       #1f2d45;
+      --border:    rgba(255,255,255,0.07);
+      --border2:   rgba(255,255,255,0.12);
+      --gold:      #f9e000;
+      --gold2:     #f5c800;
+      --blue:      #3b82f6;
+      --green:     #10b981;
+      --orange:    #f97316;
+      --purple:    #8b5cf6;
+      --red:       #ef4444;
+      --text:      #cbd5e1;
+      --text-dim:  #64748b;
+      --white:     #f1f5f9;
+      --radius:    14px;
+      --sidebar-w: 270px;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      font-size: 15px;
+      line-height: 1.7;
+      overflow-x: hidden;
+    }
+
+    /* ═══════════ TOPBAR ═══════════ */
+    .topbar {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      height: 56px;
+      background: rgba(11,15,26,0.85);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center;
+      padding: 0 28px;
+      gap: 16px;
+    }
+    .topbar-logo {
+      display: flex; align-items: center; gap: 10px;
+      font-weight: 800; font-size: 0.95rem; color: var(--white);
+      text-decoration: none;
+    }
+    .topbar-logo-icon {
+      width: 32px; height: 32px; border-radius: 8px;
+      background: linear-gradient(135deg, var(--gold), var(--gold2));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1rem; color: #111; font-weight: 900; flex-shrink: 0;
+    }
+    .topbar-sep { width: 1px; height: 20px; background: var(--border2); margin: 0 4px; }
+    .topbar-title { font-size: 0.82rem; color: var(--text-dim); font-weight: 500; }
+    .topbar-badge {
+      margin-left: auto;
+      background: rgba(249,224,0,0.12);
+      border: 1px solid rgba(249,224,0,0.25);
+      color: var(--gold);
+      font-size: 0.72rem; font-weight: 700;
+      letter-spacing: 1px; text-transform: uppercase;
+      padding: 4px 12px; border-radius: 100px;
+    }
+
+    /* ═══════════ LAYOUT ═══════════ */
+    .page-wrap {
+      display: flex;
+      padding-top: 56px;
+      min-height: 100vh;
+    }
+
+    /* ═══════════ SIDEBAR ═══════════ */
+    .sidebar {
+      width: var(--sidebar-w);
+      flex-shrink: 0;
+      position: fixed;
+      top: 56px; left: 0; bottom: 0;
+      overflow-y: auto;
+      border-right: 1px solid var(--border);
+      padding: 24px 16px 40px;
+      background: var(--bg);
+    }
+    .sidebar::-webkit-scrollbar { width: 4px; }
+    .sidebar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 4px; }
+
+    .nav-section { margin-bottom: 28px; }
+    .nav-section-title {
+      font-size: 0.67rem; font-weight: 700;
+      color: var(--text-dim);
+      text-transform: uppercase; letter-spacing: 2px;
+      padding: 0 8px; margin-bottom: 6px;
+    }
+    .nav-item {
+      display: flex; align-items: center; gap: 9px;
+      padding: 8px 10px;
+      border-radius: 9px;
+      font-size: 0.84rem; font-weight: 500;
+      color: var(--text-dim);
+      text-decoration: none;
+      transition: all 0.15s;
+      margin-bottom: 1px;
+      cursor: pointer;
+      border: none; background: none; width: 100%; text-align: left;
+    }
+    .nav-item:hover { background: var(--bg3); color: var(--white); }
+    .nav-item.active {
+      background: rgba(249,224,0,0.1);
+      color: var(--gold);
+      font-weight: 600;
+    }
+    .nav-item .nav-icon {
+      width: 22px; text-align: center; font-size: 0.95rem; flex-shrink: 0;
+    }
+    .nav-item .nav-num {
+      margin-left: auto;
+      font-size: 0.67rem; font-weight: 700;
+      background: var(--bg4);
+      color: var(--text-dim);
+      border-radius: 100px;
+      padding: 2px 7px;
+      min-width: 20px; text-align: center;
+    }
+    .nav-item.active .nav-num { background: rgba(249,224,0,0.15); color: var(--gold); }
+
+    /* ═══════════ MAIN CONTENT ═══════════ */
+    .main {
+      margin-left: var(--sidebar-w);
+      flex: 1; min-width: 0;
+    }
+
+    /* ═══════════ HERO ═══════════ */
+    .hero {
+      padding: 64px 56px 56px;
+      position: relative; overflow: hidden;
+      border-bottom: 1px solid var(--border);
+    }
+    .hero::before {
+      content: '';
+      position: absolute; inset: 0;
+      background:
+        radial-gradient(ellipse 70% 80% at 100% 50%, rgba(249,224,0,0.06) 0%, transparent 60%),
+        radial-gradient(ellipse 50% 60% at 0% 100%, rgba(59,130,246,0.05) 0%, transparent 60%);
+      pointer-events: none;
+    }
+    .hero-eyebrow {
+      display: inline-flex; align-items: center; gap: 8px;
+      font-size: 0.75rem; font-weight: 700; letter-spacing: 1.5px;
+      text-transform: uppercase; color: var(--gold);
+      margin-bottom: 18px;
+    }
+    .hero-eyebrow::before {
+      content: '';
+      display: block; width: 24px; height: 2px;
+      background: var(--gold); border-radius: 2px;
+    }
+    .hero h1 {
+      font-size: clamp(2rem, 4.5vw, 3rem);
+      font-weight: 900;
+      color: var(--white);
+      letter-spacing: -1.5px;
+      line-height: 1.1;
+      margin-bottom: 16px;
+    }
+    .hero h1 em {
+      font-style: normal;
+      background: linear-gradient(90deg, var(--gold), var(--gold2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .hero-sub {
+      font-size: 1.05rem; color: var(--text-dim);
+      max-width: 560px; margin-bottom: 36px;
+      line-height: 1.7;
+    }
+    .hero-devices {
+      display: flex; flex-wrap: wrap; gap: 10px;
+    }
+    .device-tag {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: var(--bg2);
+      border: 1px solid var(--border2);
+      border-radius: 9px;
+      padding: 8px 14px;
+      font-size: 0.82rem; font-weight: 600; color: var(--text);
+    }
+    .device-tag .d-dot {
+      width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+    }
+
+    /* ═══════════ SECTION ═══════════ */
+    .content-wrap { padding: 0 56px 80px; }
+
+    section.doc-section {
+      padding-top: 56px;
+      scroll-margin-top: 72px;
+    }
+
+    .section-label {
+      display: inline-flex; align-items: center; gap: 10px;
+      margin-bottom: 20px;
+    }
+    .section-label .step-badge {
+      width: 36px; height: 36px; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.1rem; flex-shrink: 0;
+    }
+    .section-label h2 {
+      font-size: 1.4rem; font-weight: 800;
+      color: var(--white); letter-spacing: -0.5px;
+    }
+    .section-desc {
+      font-size: 0.9rem; color: var(--text-dim);
+      margin-top: 3px;
+    }
+
+    .section-divider {
+      height: 1px; background: var(--border);
+      margin-bottom: 28px;
+    }
+
+    /* ═══════════ CARDS ═══════════ */
+    .card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px 28px;
+      margin-bottom: 16px;
+      position: relative;
+      overflow: hidden;
+    }
+    .card::before {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent);
+    }
+    .card-heading {
+      font-size: 0.95rem; font-weight: 700;
+      color: var(--white);
+      display: flex; align-items: center; gap: 9px;
+      margin-bottom: 16px;
+    }
+    .card-heading .ch-icon {
+      width: 30px; height: 30px; border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.95rem; flex-shrink: 0;
+    }
+
+    /* ═══════════ ROLE GRID ═══════════ */
+    .role-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+      margin-bottom: 20px;
+    }
+    @media (max-width: 1100px) { .role-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 700px)  { .role-grid { grid-template-columns: 1fr; } }
+
+    .role-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
+      position: relative; overflow: hidden;
+    }
+    .role-card:hover {
+      border-color: var(--border2);
+      transform: translateY(-3px);
+      box-shadow: 0 16px 40px rgba(0,0,0,0.3);
+    }
+    .role-card-glow {
+      position: absolute; top: 0; left: 0; right: 0; height: 2px;
+      border-radius: var(--radius) var(--radius) 0 0;
+    }
+    .role-card .rc-badge {
+      display: inline-block;
+      font-size: 0.65rem; font-weight: 800;
+      letter-spacing: 1.2px; text-transform: uppercase;
+      padding: 3px 9px; border-radius: 100px;
+      margin-bottom: 12px;
+    }
+    .role-card .rc-icon { font-size: 2rem; margin-bottom: 10px; display: block; }
+    .role-card h3 { font-size: 0.95rem; font-weight: 700; color: var(--white); margin-bottom: 6px; }
+    .role-card p { font-size: 0.82rem; color: var(--text-dim); margin-bottom: 14px; line-height: 1.6; }
+    .role-card .rc-url {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem;
+      background: var(--bg3);
+      border: 1px solid var(--border2);
+      border-radius: 6px;
+      padding: 5px 10px;
+      color: var(--green);
+      display: inline-block;
+    }
+
+    /* ═══════════ STEPS ═══════════ */
+    .step-list { list-style: none; padding: 0; }
+    .step-item {
+      display: flex; gap: 18px;
+      margin-bottom: 20px;
+      align-items: flex-start;
+    }
+    .step-num {
+      flex-shrink: 0;
+      width: 34px; height: 34px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--gold), var(--gold2));
+      color: #111;
+      font-size: 0.85rem; font-weight: 900;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 4px 12px rgba(249,224,0,0.25);
+      margin-top: 1px;
+    }
+    .step-body { flex: 1; min-width: 0; }
+    .step-body p { color: var(--text); margin-bottom: 10px; }
+    .step-body strong { color: var(--white); }
+
+    /* ═══════════ CODE BLOCK ═══════════ */
+    .cb-wrap { margin: 12px 0; }
+    .cb-header {
+      display: flex; align-items: center; gap: 8px;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-bottom: none;
+      border-radius: 9px 9px 0 0;
+      padding: 7px 14px;
+    }
+    .cb-dots { display: flex; gap: 5px; }
+    .cb-dots span {
+      width: 10px; height: 10px; border-radius: 50%;
+    }
+    .cb-lang {
+      font-size: 0.72rem; font-weight: 700;
+      color: var(--text-dim); letter-spacing: 0.5px;
+      text-transform: uppercase; margin-left: auto;
+    }
+    .cb-body {
+      background: #060c18;
+      border: 1px solid var(--border);
+      border-radius: 0 0 9px 9px;
+      padding: 16px 20px;
+      overflow-x: auto;
+    }
+    .cb-body pre {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      line-height: 1.8;
+      color: #e2e8f0;
+      white-space: pre; /* Mencegah pembungkusan teks agar scrollbar horizontal aktif */
+    }
+    .cb-body .t-cmd   { color: #79c0ff; }
+    .cb-body .t-path  { color: #ffa657; }
+    .cb-body .t-url   { color: var(--green); }
+    .cb-body .t-cmt   { color: #4a5568; font-style: italic; }
+    .cb-body .t-gold  { color: var(--gold); }
+    .cb-body .t-flag  { color: #f9a8d4; }
+
+    /* path boxes */
+    .path-box {
+      display: flex; align-items: center; gap: 10px;
+      background: var(--bg3); border: 1px solid var(--border2);
+      border-radius: 9px; padding: 12px 16px; margin: 10px 0;
+    }
+    .path-box .pb-icon { font-size: 1.1rem; flex-shrink: 0; }
+    .path-box .pb-text {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.84rem; color: var(--green);
+    }
+
+    /* ═══════════ CALLOUT / ALERT ═══════════ */
+    .callout {
+      display: flex; gap: 14px; align-items: flex-start;
+      padding: 16px 20px;
+      border-radius: 10px;
+      margin: 16px 0;
+      border-left: 3px solid;
+    }
+    .callout-icon { font-size: 1.1rem; flex-shrink: 0; margin-top: 1px; }
+    .callout-body .ct { font-size: 0.88rem; font-weight: 700; margin-bottom: 4px; }
+    .callout-body p { font-size: 0.85rem; line-height: 1.65; }
+    .callout-body code, .step-body code {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8em;
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 4px; padding: 1px 6px;
+      color: var(--gold);
+    }
+    .callout.info { background: rgba(59,130,246,0.08); border-color: var(--blue); }
+    .callout.info .callout-icon, .callout.info .ct { color: #60a5fa; }
+    .callout.warn { background: rgba(249,224,0,0.06); border-color: var(--gold); }
+    .callout.warn .callout-icon, .callout.warn .ct { color: var(--gold); }
+    .callout.success { background: rgba(16,185,129,0.07); border-color: var(--green); }
+    .callout.success .callout-icon, .callout.success .ct { color: var(--green); }
+    .callout.danger { background: rgba(239,68,68,0.07); border-color: var(--red); }
+    .callout.danger .callout-icon, .callout.danger .ct { color: #f87171; }
+
+    /* ═══════════ TABLE ═══════════ */
+    .tbl-wrap { overflow-x: auto; margin: 14px 0; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    th, td { padding: 11px 16px; text-align: left; }
+    thead tr { background: var(--bg3); }
+    th {
+      font-size: 0.72rem; font-weight: 800;
+      color: var(--text-dim); text-transform: uppercase;
+      letter-spacing: 0.8px; border-bottom: 1px solid var(--border2);
+    }
+    td { border-bottom: 1px solid var(--border); color: var(--text); }
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr:hover td { background: rgba(255,255,255,0.02); }
+    td strong { color: var(--white); }
+    td code {
+      font-family: 'JetBrains Mono', monospace; font-size: 0.78em;
+      background: var(--bg3); border: 1px solid var(--border2);
+      border-radius: 4px; padding: 2px 7px; color: var(--green);
+    }
+
+    /* ═══════════ URL ACCESS CARDS ═══════════ */
+    .url-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 12px; margin: 14px 0;
+    }
+    .url-card {
+      background: var(--bg3); border: 1px solid var(--border);
+      border-radius: 10px; padding: 14px 16px;
+      display: flex; align-items: center; gap: 12px;
+    }
+    .url-card .uc-icon {
+      width: 36px; height: 36px; border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.1rem; flex-shrink: 0;
+    }
+    .url-card .uc-label { font-size: 0.78rem; color: var(--text-dim); margin-bottom: 3px; }
+    .url-card .uc-url {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem; color: var(--green); font-weight: 600;
+    }
+
+    /* ═══════════ SPEC GRID ═══════════ */
+    .spec-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin: 12px 0; }
+    .spec-item { background: var(--bg3); border: 1px solid var(--border); border-radius: 9px; padding: 12px 16px; }
+    .spec-lbl { font-size: 0.72rem; color: var(--text-dim); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+    .spec-val { font-size: 0.9rem; font-weight: 700; color: var(--white); }
+
+    /* ═══════════ HIGHLIGHT INLINE ═══════════ */
+    mark {
+      background: rgba(249,224,0,0.15);
+      color: var(--gold); border-radius: 3px;
+      padding: 0 4px; font-weight: 600;
+    }
+    strong { color: var(--white); }
+    a { color: var(--blue); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* ═══════════ SECTION SEPARATOR ═══════════ */
+    .seg { height: 1px; background: var(--border); margin: 28px 0; }
+
+    /* ═══════════ TWO COL ═══════════ */
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 14px 0; }
+    @media (max-width: 800px) { .two-col { grid-template-columns: 1fr; } }
+
+    /* ═══════════ FOOTER ═══════════ */
+    .doc-footer {
+      border-top: 1px solid var(--border);
+      padding: 28px 56px;
+      display: flex; align-items: center; gap: 16px;
+      flex-wrap: wrap;
+    }
+    .doc-footer-logo {
+      display: flex; align-items: center; gap: 9px;
+      font-weight: 700; font-size: 0.9rem; color: var(--gold);
+    }
+    .doc-footer p { font-size: 0.82rem; color: var(--text-dim); }
+    .doc-footer-right { margin-left: auto; text-align: right; }
+
+    /* ═══════════ RESPONSIVE ═══════════ */
+    @media (max-width: 900px) {
+      .sidebar { display: none; }
+      .main { margin-left: 0; }
+      .hero, .content-wrap, .doc-footer { padding-left: 24px; padding-right: 24px; }
+      .role-grid { grid-template-columns: 1fr 1fr; }
+      .spec-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ───────────── TOPBAR ───────────── -->
+<header class="topbar">
+  <div class="topbar-logo">
+    <div class="topbar-logo-icon">Q</div>
+    Nomor Antrian
+  </div>
+  <div class="topbar-sep"></div>
+  <span class="topbar-title">Panduan Pengguna</span>
+  <span class="topbar-badge">⚡ Tepilayar</span>
+</header>
+
+<div class="page-wrap">
+
+<!-- ───────────── SIDEBAR ───────────── -->
+<nav class="sidebar">
+  <div class="nav-section">
+    <div class="nav-section-title">Pendahuluan</div>
+    <a class="nav-item active" href="#arsitektur">
+      <span class="nav-icon">🏗</span> Arsitektur Sistem
+    </a>
+    <a class="nav-item" href="#kebutuhan">
+      <span class="nav-icon">📦</span> Kebutuhan
+    </a>
+  </div>
+  <div class="nav-section">
+    <div class="nav-section-title">Setup Awal (Sekali Saja)</div>
+    <a class="nav-item" href="#setup-printer">
+      <span class="nav-icon">🖨</span> Setting Printer
+    </a>
+    <a class="nav-item" href="#setup-firewall">
+      <span class="nav-icon">🔥</span> Izinkan Firewall
+    </a>
+    <a class="nav-item" href="#setup-ip">
+      <span class="nav-icon">🌐</span> Cari IP Server
+    </a>
+    <a class="nav-item" href="#setup-shortcut">
+      <span class="nav-icon">🔗</span> Buat Shortcut Kiosk
+    </a>
+  </div>
+  <div class="nav-section">
+    <div class="nav-section-title">Operasional Harian</div>
+    <a class="nav-item" href="#jalankan-server">
+      <span class="nav-icon">▶</span> Jalankan Server (.exe)
+    </a>
+    <a class="nav-item" href="#komputer-kiosk">
+      <span class="nav-icon">🎫</span> Komputer Ambil Antrian
+    </a>
+    <a class="nav-item" href="#komputer-petugas">
+      <span class="nav-icon">👤</span> Petugas Loket
+    </a>
+    <a class="nav-item" href="#layar-display">
+      <span class="nav-icon">📺</span> Layar Display
+    </a>
+  </div>
+  <div class="nav-section">
+    <div class="nav-section-title">Manajemen</div>
+    <a class="nav-item" href="#admin">
+      <span class="nav-icon">⚙</span> Dashboard Admin
+    </a>
+    <a class="nav-item" href="#troubleshoot">
+      <span class="nav-icon">🔧</span> Troubleshooting
+    </a>
+    <a class="nav-item" href="#referensi">
+      <span class="nav-icon">📋</span> Referensi URL
+    </a>
+  </div>
+</nav>
+
+<!-- ───────────── MAIN ───────────── -->
+<main class="main">
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-eyebrow">Dokumentasi Resmi · Versi .exe</div>
+  <h1>Panduan <em>Sistem Antrian</em><br>Modern</h1>
+  <p class="hero-sub">Panduan lengkap penggunaan aplikasi antrian berbasis .exe untuk komputer server, petugas loket, kiosk ambil antrian, dan layar display.</p>
+  <div class="hero-devices">
+    <div class="device-tag"><span class="d-dot" style="background:#10b981"></span> Komputer Server</div>
+    <div class="device-tag"><span class="d-dot" style="background:#3b82f6"></span> Petugas Loket</div>
+    <div class="device-tag"><span class="d-dot" style="background:#f97316"></span> Kiosk Ambil Antrian</div>
+    <div class="device-tag"><span class="d-dot" style="background:#8b5cf6"></span> Printer Kasir 58mm</div>
+    <div class="device-tag"><span class="d-dot" style="background:#f9e000"></span> Wi-Fi / LAN</div>
+  </div>
+</section>
+
+<div class="content-wrap">
+
+<!-- ══════════════ 1. ARSITEKTUR ══════════════ -->
+<section class="doc-section" id="arsitektur">
+  <div class="section-label">
+    <div class="step-badge" style="background:rgba(249,224,0,0.12)">🏗</div>
+    <div>
+      <h2>Arsitektur Sistem</h2>
+      <p class="section-desc">Peran masing-masing perangkat dalam jaringan</p>
+    </div>
+  </div>
+  <div class="section-divider"></div>
+
+  <div class="role-grid">
+    <div class="role-card">
+      <div class="role-card-glow" style="background:linear-gradient(90deg,#10b981,transparent)"></div>
+      <span class="rc-badge" style="background:rgba(16,185,129,0.15);color:#10b981">Server</span>
+      <span class="rc-icon">🖥</span>
+      <h3>Komputer Server</h3>
+      <p>Menjalankan file <strong>nomor-antrian.exe</strong>. Semua perangkat lain terhubung ke komputer ini.</p>
+      <span class="rc-url">http://&lt;IP-SERVER&gt;:3000</span>
+    </div>
+    <div class="role-card">
+      <div class="role-card-glow" style="background:linear-gradient(90deg,#3b82f6,transparent)"></div>
+      <span class="rc-badge" style="background:rgba(59,130,246,0.15);color:#3b82f6">Petugas</span>
+      <span class="rc-icon">👤</span>
+      <h3>Komputer Petugas Loket</h3>
+      <p>Buka browser, akses halaman <strong>/counter</strong> untuk memanggil nomor antrian.</p>
+      <span class="rc-url">…/counter</span>
+    </div>
+    <div class="role-card">
+      <div class="role-card-glow" style="background:linear-gradient(90deg,#f97316,transparent)"></div>
+      <span class="rc-badge" style="background:rgba(249,115,22,0.15);color:#f97316">Kiosk</span>
+      <span class="rc-icon">🎫</span>
+      <h3>Komputer Ambil Antrian</h3>
+      <p>Layar sentuh mandiri untuk pengunjung. Terhubung ke printer kasir 58mm.</p>
+      <span class="rc-url">…/kiosk</span>
+    </div>
+    <div class="role-card">
+      <div class="role-card-glow" style="background:linear-gradient(90deg,#8b5cf6,transparent)"></div>
+      <span class="rc-badge" style="background:rgba(139,92,246,0.15);color:#8b5cf6">Display</span>
+      <span class="rc-icon">📺</span>
+      <h3>Layar Display</h3>
+      <p>TV/monitor di ruang tunggu yang tersambung ke PC Server. Buka dari browser PC server.</p>
+      <span class="rc-url">localhost:3000/display</span>
+    </div>
+  </div>
+
+  <div class="card" style="text-align: center; background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; margin-bottom: 20px; display: flex; flex-direction: column; align-items: center;">
+    <div class="card-heading" style="margin-bottom: 16px; width: 100%; justify-content: flex-start;">
+      <div class="ch-icon" style="background:rgba(249,224,0,0.1)">🕸</div>
+      Skema Topologi Jaringan (2D Hitam Putih)
+    </div>
+    <div style="background: #ffffff; border-radius: 8px; padding: 16px; width: 100%; max-width: 800px; display: flex; justify-content: center; border: 1px solid rgba(255,255,255,0.08);">
+      <img src="topologi_jaringan.png" alt="Topologi Jaringan Sistem Antrian" style="max-width: 100%; height: auto; border-radius: 4px;" />
+    </div>
+    <p style="font-size: 0.82rem; color: var(--text-dim); margin-top: 12px; text-align: center; line-height: 1.5;">
+      Diagram koneksi lokal: PC Server (yang menjalankan program `.exe` dan menampilkan layar display TV) bertindak sebagai pusat data. PC Petugas dan PC Kiosk terhubung ke router yang sama untuk mengakses server.
+    </p>
+  </div>
+
+  <div class="callout info">
+    <span class="callout-icon">ℹ</span>
+    <div class="callout-body">
+      <div class="ct">Satu Jaringan, Semua Terhubung</div>
+      <p>Semua perangkat (server, petugas, kiosk, display) <strong>harus terhubung ke jaringan Wi-Fi atau LAN yang sama</strong>. Sinkronisasi berjalan real-time via WebSocket — tanpa perlu refresh browser.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════ 2. KEBUTUHAN ══════════════ -->
+<section class="doc-section" id="kebutuhan">
+  <div class="section-label">
+    <div class="step-badge" style="background:rgba(59,130,246,0.12)">📦</div>
+    <div>
+      <h2>Kebutuhan Sistem</h2>
+      <p class="section-desc">Spesifikasi minimum sebelum memulai</p>
+    </div>
+  </div>
+  <div class="section-divider"></div>
+
+  <div class="two-col">
+    <div class="card">
+      <div class="card-heading">
+        <div class="ch-icon" style="background:rgba(16,185,129,0.12)">🖥</div>
+        Komputer Server
+      </div>
+      <div class="spec-grid">
+        <div class="spec-item"><div class="spec-lbl">OS</div><div class="spec-val">Windows 10/11 (64-bit)</div></div>
+        <div class="spec-item"><div class="spec-lbl">RAM</div><div class="spec-val">Minimal 2 GB</div></div>
+        <div class="spec-item"><div class="spec-lbl">File</div><div class="spec-val">nomor-antrian.exe</div></div>
+        <div class="spec-item"><div class="spec-lbl">Jaringan</div><div class="spec-val">Wi-Fi / Ethernet</div></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-heading">
+        <div class="ch-icon" style="background:rgba(139,92,246,0.12)">🖨</div>
+        Printer Kasir
+      </div>
+      <div class="spec-grid">
+        <div class="spec-item"><div class="spec-lbl">Tipe</div><div class="spec-val">Thermal / POS</div></div>
+        <div class="spec-item"><div class="spec-lbl">Lebar Kertas</div><div class="spec-val">58 mm</div></div>
+        <div class="spec-item"><div class="spec-lbl">Koneksi</div><div class="spec-val">USB ke PC Kiosk</div></div>
+        <div class="spec-item"><div class="spec-lbl">Driver</div><div class="spec-val">Sesuai merek</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-heading">
+      <div class="ch-icon" style="background:rgba(59,130,246,0.12)">💻</div>
+      Komputer Klien (Petugas &amp; Kiosk)
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Kebutuhan</th><th>Detail</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Browser</strong></td><td>Google Chrome atau Microsoft Edge (versi terbaru)</td></tr>
+          <tr><td><strong>Instalasi</strong></td><td>Tidak perlu install apapun — cukup browser</td></tr>
+          <tr><td><strong>Jaringan</strong></td><td>Terhubung ke Wi-Fi / LAN yang sama dengan server</td></tr>
+          <tr><td><strong>OS</strong></td><td>Windows, Mac, atau Linux (semua didukung)</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════ SETUP AWAL ══════════════ -->
+<section class="doc-section" id="setup-printer">
+  <div class="section-label">
+    <div class="step-badge" style="background:rgba(139,92,246,0.12)">🖨</div>
+    <div>
+      <h2>Setup Awal — Setting Printer Kasir 58mm</h2>
+      <p class="section-desc">Dilakukan sekali saja di komputer kiosk (ambil antrian)</p>
+    </div>
+  </div>
+  <div class="section-divider"></div>
+
+  <div class="card">
+    <div class="card-heading"><div class="ch-icon" style="background:rgba(139,92,246,0.1)">🔌</div>Langkah 1 — Hubungkan Printer</div>
+    <ul class="step-list">
+      <li class="step-item">
+        <div class="step-num">1</div>
+        <div class="step-body"><p>Hubungkan printer kasir 58mm via kabel <strong>USB</strong> ke komputer kiosk. Nyalakan printer dan pastikan lampu indikator menyala normal.</p></div>
+      </li>
+      <li class="step-item">
+        <div class="step-num">2</div>
+        <div class="step-body"><p>Pasang kertas thermal <strong>58mm</strong> ke dalam printer. Pastikan kertas sudah terisi dengan benar.</p></div>
+      </li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <div class="card-heading"><div class="ch-icon" style="background:rgba(139,92,246,0.1)">💾</div>Langkah 2 — Install Driver Printer</div>
+    <p style="color:var(--text-dim);margin-bottom:14px;font-size:0.88rem">Unduh driver sesuai merek printer Anda:</p>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Merek</th><th>Situs Driver</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Epson TM / TM-T20</strong></td><td><code>epson.com/drivers</code></td></tr>
+          <tr><td><strong>Xprinter / XP-58</strong></td><td><code>xprinter.net</code></td></tr>
+          <tr><td><strong>Rongta RPP02</strong></td><td><code>rongtatech.com</code></td></tr>
+          <tr><td><strong>Generic / POS-58</strong></td><td>Cari "Generic ESC/POS 58mm driver"</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <ul class="step-list" style="margin-top:14px">
+      <li class="step-item">
+        <div class="step-num">1</div>
+        <div class="step-body"><p>Jalankan installer driver → klik <strong>Next → Accept → Install</strong> sampai selesai. Restart komputer jika diminta.</p></div>
+      </li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <div class="card-heading"><div class="ch-icon" style="background:rgba(139,92,246,0.1)">⚙</div>Langkah 3 — Set sebagai Printer Default &amp; Ukuran Kertas</div>
+    <ul class="step-list">
+      <li class="step-item">
+        <div class="step-num">1</div>
+        <div class="step-body"><p>Buka <strong>Control Panel → Devices and Printers</strong>. Klik kanan pada printer kasir → <strong>Set as default printer</strong>.</p></div>
+      </li>
+      <li class="step-item">
+        <div class="step-num">2</div>
+        <div class="step-body"><p>Klik kanan lagi → <strong>Printing preferences</strong> → tab <strong>Paper / Media</strong>. Pilih ukuran <strong>58mm × 210mm</strong>. Jika tidak ada, buat ukuran kustom: lebar <code>58mm</code>, tinggi <code>80mm</code>.</p></div>
+      </li>
+      <li class="step-item">
+        <div class="step-num">3</div>
+        <div class="step-body"><p>Klik <strong>OK</strong> dan simpan. Coba cetak halaman test dari <strong>Devices and Printers</strong> untuk memastikan printer berfungsi.</p></div>
+      </li>
+    </ul>
+  </div>
+</section>
+
+<!-- ══════════════ FIREWALL ══════════════ -->
+<section class="doc-section" id="setup-firewall">
+  <div class="section-label">
+    <div class="step-badge" style="background:rgba(239,68,68,0.1)">🔥</div>
+    <div>
+      <h2>Setup Awal — Izinkan Firewall Windows</h2>
+      <p class="section-desc">Dilakukan sekali saja di komputer server</p>
+    </div>
+  </div>
+  <div class="section-divider"></div>
+
+  <div class="card">
+    <ul class="step-list">
+      <li class="step-item">
+        <div class="step-num">1</div>
+        <div class="step-body"><p>Saat pertama kali menjalankan <strong>nomor-antrian.exe</strong>, Windows akan menampilkan popup <mark>Windows Defender Firewall</mark>.</p></div>
+      </li>
+      <li class="step-item">
+        <div class="step-num">2</div>
+        <div class="step-body"><p>Pilih <strong>"Allow access"</strong> / <strong>"Izinkan akses"</strong> untuk jaringan <strong>Private</strong>. Ini agar komputer lain di jaringan yang sama dapat terhubung ke server.</p></div>
+      </li>
+      <li class="step-item">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <p>Jika popup tidak muncul, lakukan secara manual:</p>
+          <div class="path-box">
+            <span class="pb-icon">📂</span>
+            <span class="pb-text">Control Panel → Windows Defender Firewall → Allow an app through firewall</span>
+          </div>
+          <p>Cari <code>nomor-antrian.exe</code> dan centang kolom <strong>Private</strong>, lalu klik OK.</p>
+        </div>
+      </li>
+    </ul>
+    <div class="callout danger" style="margin-top:8px">
+      <span class="callout-icon">⚠</span>
+      <div class="callout-body">
+        <div class="ct">Wajib dilakukan agar klien bisa terhubung</div>
+        <p>Jika firewall tidak diizinkan, komputer petugas dan kiosk akan menampilkan status <mark>Server Terputus</mark> meskipun server sudah berjalan.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════ IP SERVER ══════════════ -->
+<section class="doc-section" id="setup-ip">
+  <div class="section-label">
+    <div class="step-badge" style="background:rgba(16,185,129,0.1)">🌐</div>
+    <div>
+      <h2>Setup Awal — Cari IP Address Server</h2>
+      <p class="section-desc">Diperlukan agar komputer klien bisa mengakses aplikasi</p>
+    </div>
+  </div>
+  <div class="section-divider"></div>
+
+  <div class="card">
+    <ul class="step-list">
+      <li class="step-item">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <p>Jalankan <strong>nomor-antrian.exe</strong> terlebih dahulu. IP server akan muncul otomatis di jendela konsol hitam yang terbuka. Cari baris bertuliskan:</p>
+          <div class="cb-wrap">
+            <div class="cb-header">
+              <div class="cb-dots"><span style="background:#ef4444"></span><span style="background:#f59e0b"></span><span style="background:#10b981"></span></div>
+              <span class="cb-lang">Output Konsol</span>
+            </div>
+            <div class="cb-body"><pre><span class="t-gold">Akses jaringan lokal: </span><span class="t-url">http://192.168.1.100:3000</span></pre></div>
+          </div>
+          <p>Nomor <mark>192.168.1.100</mark> adalah IP server Anda (berbeda tiap jaringan).</p>
+        </div>
+      </li>
+      <li class="step-item">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <p>Atau cari secara manual lewat <strong>Command Prompt</strong>: tekan <code>Win + R</code> → ketik <code>cmd</code> → Enter, lalu ketik:</p>
+          <div class="cb-wrap">
+            <div class="cb-header">
+              <div class="cb-dots"><span style="background:#ef4444"></span><span style="background:#f59e0b"></span><span style="background:#10b981"></span></div>
+              <span class="cb-lang">Command Prompt</span>
+            </div>
+            <div class="cb-body"><pre><span class="t-cmd">ipconfig</span></pre></div>
+          </div>
+          <p>Cari <strong>IPv4 Address</strong> pada adapter Wi-Fi atau Ethernet yang aktif.</p>
+        </div>
+      </li>
+      <li class="step-item">
+        <div class="step-num">3</div>
+        <div class="step-body"><p><strong>Catat IP tersebut</strong> dan bagikan ke semua komputer klien (petugas, kiosk, display).</p></div>
+      </li>
+    </ul>
+
+    <div class="callout warn">
+      <span class="callout-icon">💡</span>
+      <div class="callout-body">
+        <div class="ct">Tip: Set IP Statis di Server</div>
+        <p>Agar IP server tidak berubah setiap restart, atur IP Statis di <strong>Control Panel → Network &amp; Sharing Center → Change Adapter Settings</strong> → klik kanan adapter → Properties → IPv4 → "Use the following IP address".</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════ SHORTCUT KIOSK ══════════════ -->
+<section class="doc-section" id="setup-shortcut">
+  <div class="section-label">
+    <div class="step-badge" style="background:rgba(249,115,22,0.1)">🔗</div>
+    <div>
+      <h2>Setup Awal — Buat Shortcut Kiosk (Silent Print)</h2>
+      <p class="section-desc">Agar printer mencetak tiket otomatis tanpa dialog konfirmasi</p>
+    </div>
+  </div>
+  <div class="section-divider"></div>
+
+  <div class="card">
+    <div class="callout success" style="margin-bottom:20px">
+      <span class="callout-icon">✅</span>
+      <div class="callout-body">
+        <div class="ct">Shortcut otomatis dibuat!</div>
+        <p>Saat <strong>nomor-antrian.exe</strong> pertama kali dijalankan, shortcut <mark>Ambil Antrian</mark> langsung dibuat otomatis di Desktop komputer server. Gunakan shortcut tersebut di komputer kiosk.</p>
+      </div>
+    </div>
+
+    <p style="color:var(--text-dim);margin-bottom:16px;font-size:0.88rem">Jika perlu membuat shortcut secara manual di komputer kiosk lain:</p>
+    <ul class="step-list">
+      <li class="step-item">
+        <div class="step-num">1</div>
+        <div class="step-body"><p>Klik kanan di Desktop → <strong>New → Shortcut</strong>.</p></div>
+      </li>
+      <li class="step-item">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <p>Pada kolom lokasi, masukkan (ganti IP sesuai server Anda):</p>
+          <div class="cb-wrap">
+            <div class="cb-header">
+              <div class="cb-dots"><span style="background:#ef4444"></span><span style="background:#f59e0b"></span><span style="background:#10b981"></span></div>
+              <span class="cb-lang">Target Shortcut — Google Chrome</span>
+            </div>
+            <div class="cb-body"><pre><span class="t-path">"C:\Program Files\Google\Chrome\Application\chrome.exe"</span> <span class="t-flag">--kiosk --kiosk-printing</span> <span class="t-url">http://192.168.1.100:3000/kiosk</span></pre></div>
+          </div>
+          <div class="cb-wrap" style="margin-top:8px">
+            <div class="cb-header">
+              <div class="cb-dots"><span style="background:#ef4444"></span><span style="background:#f59e0b"></span><span style="background:#10b981"></span></div>
+              <span class="cb-lang">Target Shortcut — Microsoft Edge</span>
+            </div>
+            <div class="cb-body"><pre><span class="t-path">"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe"</span> <span class="t-flag">--kiosk --kiosk-printing</span> <span class="t-url">http://192.168.1.100:3000/kiosk</span></pre></div>
+          </div>
+        </div>
+      </li>
+      <li class="step-item">
+        <div class="step-num">3</div>
+        <div class="step-body"><p>Klik <strong>Next</strong>, beri nama shortcut <strong>"Ambil Antrian"</strong>, klik <strong>Finish</strong>.</p></div>
+      </li>
+    </ul>
+
+    <div class="callout warn">
+      <span class="callout-icon">⚠</span>
+      <div class="callout-body">
+        <div class="ct">Mode Kiosk Fullscreen</div>
+        <p>Chrome/Edge akan fullscreen dan taskbar tersembunyi saat menggunakan flag <code>--kiosk</code>. Untuk keluar dari mode kiosk, tekan <code>Alt + F4</code>.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════ JALANKAN SERVER ══════════════ -->
+<section class="doc-section" id="jalankan-server">
+  <div class="section-label">
+    <div class="step-badge" style="background:rgba(249,224,0,0.12)">▶</div>
+    <div>
+      <h2>Operasional Harian — Jalankan Server</h2>
+      <p class="section-desc">Dilakukan setiap hari sebelum mulai pelayanan</p>
+    </div>
+  </div>
+  <div class="section-divider"></div>
+
+  <div class="card">
+    <div class="card-heading"><div class="ch-icon" style="background:rgba(249,224,0,0.1)">🖥</div>Di Komputer Server — Klik Dua Kali .exe</div>
+    <ul class="step-list">
+      <li class="step-item">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <p>Pastikan komputer server sudah terhubung ke jaringan Wi-Fi atau LAN. Buka folder aplikasi dan <strong>klik dua kali</strong> file:</p>
+          <div class="path-box">
+            <span class="pb-icon">📁</span>
+            <span class="pb-text">nomor-antrian.exe</span>
+          </div>
+        </div>
+      </li>
+      <li class="step-item">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <p>Jendela konsol hitam akan muncul dan menampilkan pesan sukses seperti ini:</p>
+          <div class="cb-wrap">
+            <div class="cb-header">
+              <div class="cb-dots"><span style="background:#ef4444"></span><span style="background:#f59e0b"></span><span style="background:#10b981"></span></div>
+              <span class="cb-lang">Output Konsol</span>
+            </div>
+            <div class="cb-body"><pre><span class="t-gold">================================================</span>
+Sistem Antrian Modern Berhasil Dijalankan!
+<span class="t-gold">------------------------------------------------</span>
+<span class="t-cmt">Akses lokal    :</span>  <span class="t-url">http://localhost:3000</span>
+<span class="t-cmt">Akses jaringan :</span>  <span class="t-url">http://192.168.1.100:3000</span>
+<span class="t-gold">================================================</span></pre></div>
+          </div>
+        </div>
+      </li>
+      <li class="step-item">
+        <div class="step-num">3</div>
+        <div class="step-body"><p>Browser akan terbuka otomatis dan menampilkan halaman utama aplikasi. Shortcut <strong>"Ambil Antrian"</strong> juga dibuat/diperbarui di Desktop secara otomatis.</p></div>
+      </li>
+      <li class="step-item">
+        <div class="step-num">4</div>
+        <div class="step-body">
+          <p><strong>Jangan tutup jendela konsol hitam</strong> selama aplikasi digunakan. Minimalkan saja ke taskbar.</p>
+          <div class="callout success" style="margin-top:8px">
+            <span class="callout-icon">✅</span>
+            <div class="callout-body">
+              <div class="ct">Server siap! Lanjutkan ke komputer klien.</div>
+            </div>
+          </div>
+        </div>
+      </li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <div class="card-heading"><div class="ch-icon" style="background:rgba(249,224,0,0.1)">🔄</div>Urutan Start-up Sistem (Setiap Hari)</div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Urutan</th><th>Langkah</th><th>Cara</th></tr></thead>
+        <tbody>
+          <tr><td><strong>1</strong></td><td><strong>Nyalakan &amp; jalankan server</strong></td><td>Klik dua kali <code>nomor-antrian.exe</code></td></tr>
+          <tr><td><strong>2</strong></td><td><strong>Petugas loket siap</strong></td><td>Buka browser → <code>http://&lt;IP&gt;:3000/counter</code></td></tr>
+          <tr><td><strong>3</strong></td><td><strong>Kiosk ambil antrian siap</strong></td><td>Buka shortcut "Ambil Antrian" di Desktop</td></tr>
+          <tr><td><strong>4</strong></td><td><strong>Layar display aktif (opsional)</strong></td><td>Buka browser di PC Server → <code>http://localhost:3000/display</code> → F11</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════ KIOSK ══════════════ -->
+<section class="doc-section" id="komputer-kiosk">
+  <div class="section-label">
+    <div class="step-badge" style="background:rgba(249,115,22,0.1)">🎫</div>
+    <div>
+      <h2>Komputer Ambil Antrian (Kiosk)</h2>
+      <p class="section-desc">Cara penggunaan untuk pengunjung dan cara membuka halaman kiosk</p>
+    </div>
+  </div>
+  <div class="section-divider"></div>
+
+  <div class="card">
+    <div class="card-heading"><div class="ch-icon" style="background:rgba(249,115,22,0.1)">🖥</div>Membuka Halaman Kiosk</div>
+    <ul class="step-list">
+      <li class="step-item">
+        <div class="step-num">1</div>
+        <div class="step-body"><p>Pastikan komputer kiosk terhubung ke jaringan yang sama dengan server dan server sudah berjalan.</p></div>
+      </li>
+      <li class="step-item">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <p>Klik dua kali shortcut <mark>Ambil Antrian</mark> di Desktop (mode fullscreen + print otomatis), atau buka browser manual ke:</p>
+          <div class="path-box">
+            <span class="pb-icon">🔗</span>
+            <span class="pb-text">http://&lt;IP-SERVER&gt;:3000/kiosk</span>
+          </div>
+        </div>
+      </li>
+      <li class="step-item">
+        <div class="step-num">3</div>
+        <div class="step-body"><p>Pastikan indikator <mark>Sistem Terhubung</mark> berwarna hijau di sudut layar. Jika merah, cek koneksi jaringan atau pastikan server sudah berjalan.</p></div>
+      </li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <div class="card-heading"><div class="ch-icon" style="background:rgba(249,115,22,0.1)">👆</div>Cara Pengunjung Ambil Antrian</div>
+    <ul class="step-list">
+      <li class="step-item">
+        <div class="step-num">1</div>
+        <div class="step-body"><p>Pengunjung mendekati layar kiosk yang menampilkan daftar tombol layanan.</p></div>
+      </li>
+      <li class="step-item">
+        <div class="step-num">2</div>
+        <div class="step-body"><p>Tekan tombol layanan yang dituju (contoh: <strong>Pengajuan Akun</strong>, <strong>Verifikasi</strong>, dll).</p></div>
+      </li>
+      <li class="step-item">
+        <div class="step-num">3</div>
+        <div class="step-body"><p>Printer kasir otomatis mencetak tiket berisi: nama layanan, <strong>nomor antrian</strong> (contoh: A-001), dan waktu cetak.</p></div>
+      </li>
+      <li class="step-item">
+        <div class="step-num">4</div>
+        <div class="step-body"><p>Pengunjung menyimpan tiket dan menunggu di kursi hingga nomornya dipanggil di layar display.</p></div>
+      </li>
+    </ul>
+
+    <div class="callout info">
+      <span class="callout-icon">🖨</span>
+      <div class="callout-body">
+        <div class="ct">Tiket tercetak otomatis</div>
+        <p>Jika browser dibuka via shortcut dengan flag <code>--kiosk-printing</code>, tiket langsung tercetak tanpa dialog print. Jika via browser biasa, klik <strong>Print</strong> saat dialog muncul.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════ PETUGAS ══════════════ -->
+<section class="doc-section" id="komputer-petugas">
+  <div class="section-label">
+    <div class="step-badge" style="background:rgba(59,130,246,0.1)">👤</div>
+    <div>
+      <h2>Komputer Petugas Loket</h2>
+      <p class="section-desc">Cara memanggil antrian dan menggunakan panel kontrol loket</p>
+    </div>
+  </div>
+  <div class="section-divider"></div>
+
+  <div class="card">
+    <div class="card-heading"><div class="ch-icon" style="background:rgba(59,130,246,0.1)">🌐</div>Membuka Halaman Petugas</div>
+    <ul class="step-list">
+      <li class="step-item">
+        <div class="step-num">1</div>
+        <div class="step-body"><p>Buka browser <strong>Chrome</strong> atau <strong>Edge</strong> di komputer petugas.</p></div>
+      </li>
+      <li class="step-item">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <p>Ketik alamat berikut di address bar:</p>
+          <div class="path-box">
+            <span class="pb-icon">🔗</span>
+            <span class="pb-text">http://&lt;IP-SERVER&gt;:3000/counter</span>
+          </div>
+          <p>Contoh: <code>http://192.168.1.100:3000/counter</code></p>
+        </div>
+      </li>
+      <li class="step-item">
+        <div class="step-num">3</div>
+        <div class="step-body"><p>Halaman <strong>Kontrol Loket</strong> akan terbuka. Pastikan indikator <mark>Terhubung</mark> hijau di pojok kanan atas.</p></div>
+      </li>
+      <li class="step-item">
+        <div class="step-num">4</div>
+        <div class="step-body"><p><strong>(Opsional)</strong> Bookmark halaman ini atau set sebagai homepage browser agar mudah diakses setiap hari.</p></div>
+      </li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <div class="card-heading"><div class="ch-icon" style="background:rgba(59,130,246,0.1)">📞</div>Cara Memanggil Antrian</div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Elemen UI</th><th>Fungsi</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Dropdown Loket</strong></td><td>Pilih nomor loket Anda (Loket 1, 2, dst)</td></tr>
+          <tr><td><strong>Dropdown Layanan</strong></td><td>Pilih kategori layanan yang Anda tangani</td></tr>
+          <tr><td><strong>Nomor Besar (kiri)</strong></td><td>Nomor antrian terakhir yang Anda panggil</td></tr>
+          <tr><td><strong>Antrian terakhir cetak</strong></td><td>Nomor terbesar yang sudah dicetak pengunjung</td></tr>
+          <tr><td><strong>Terakhir dipanggil (global)</strong></td><td>Nomor terakhir yang dipanggil semua loket</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <ul class="step-list" style="margin-top:16px">
+      <li class="step-item">
+        <div class="step-num">1</div>
+        <div class="step-body"><p>Pilih <strong>nomor loket</strong> dan <strong>kategori layanan</strong> dari dropdown.</p></div>
+      </li>
+      <li class="step-item">
+        <div class="step-num">2</div>
+        <div class="step-body"><p>Klik tombol besar <strong>"PANGGIL BERIKUTNYA"</strong> untuk memanggil nomor urut berikutnya. Nomor akan muncul di layar display beserta suara notifikasi.</p></div>
+      </li>
+      <li class="step-item">
+        <div class="step-num">3</div>
+        <div class="step-body"><p>Jika pengunjung tidak hadir, klik <strong>"PANGGIL ULANG"</strong> untuk memanggil nomor yang sama kembali.</p></div>
+      </li>
+    </ul>
+
+    <div class="callout info" style="margin-top:4px">
+      <span class="callout-icon">ℹ</span>
+      <div class="callout-body">
+        <div class="ct">Multi-loket didukung</div>
+        <p>Jika ada beberapa petugas, masing-masing membuka halaman <code>/counter</code> di komputernya dan memilih nomor loketnya sendiri. Sistem mengkoordinasikan pemanggilan secara otomatis — nomor tidak akan dipanggil dua kali.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════ DISPLAY ══════════════ -->
+<section class="doc-section" id="layar-display">
+  <div class="section-label">
+    <div class="step-badge" style="background:rgba(139,92,246,0.1)">📺</div>
+    <div>
+      <h2>Layar Display Ruang Tunggu</h2>
+      <p class="section-desc">TV atau monitor besar yang menampilkan antrian secara real-time</p>
+    </div>
+  </div>
+  <div class="section-divider"></div>
+
+  <div class="card">
+    <div class="callout info">
+      <span class="callout-icon">💡</span>
+      <div class="callout-body">
+        <div class="ct">Server &amp; Display di Satu PC</div>
+        <p>Karena komputer server dan layar display TV menggunakan satu PC yang sama (menggunakan mode Dual Monitor / HDMI), Anda cukup membuka layar display dari browser di komputer server menggunakan alamat <strong>localhost</strong>.</p>
+      </div>
+    </div>
+    <ul class="step-list">
+      <li class="step-item">
+        <div class="step-num">1</div>
+        <div class="step-body"><p>Hubungkan TV display ke komputer server menggunakan kabel <strong>HDMI</strong>. Atur layar menjadi mode <strong>Extend</strong> di Windows (tekan <code>Win + P</code> → pilih <strong>Extend</strong>).</p></div>
+      </li>
+      <li class="step-item">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <p>Geser jendela browser ke arah layar TV display, lalu akses alamat:</p>
+          <div class="path-box">
+            <span class="pb-icon">🔗</span>
+            <span class="pb-text">http://localhost:3000/display</span>
+          </div>
+        </div>
+      </li>
+      <li class="step-item">
+        <div class="step-num">3</div>
+        <div class="step-body"><p>Tekan <code>F11</code> untuk fullscreen pada layar TV display tersebut. Layar menampilkan nomor yang dipanggil secara real-time beserta suara notifikasi otomatis.</p></div>
+      </li>
+    </ul>
+    <div class="tbl-wrap" style="margin-top:8px">
+      <table>
+        <thead><tr><th>Informasi Ditampilkan</th><th>Keterangan</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Nomor Dipanggil</strong></td><td>Nomor antrian terbaru yang sedang dipanggil (animasi besar)</td></tr>
+          <tr><td><strong>Loket Tujuan</strong></td><td>Nomor loket tempat pengunjung harus menuju</td></tr>
+          <tr><td><strong>Status per Layanan</strong></td><td>Ringkasan tiket cetak dan tiket sudah dipanggil</td></tr>
+          <tr><td><strong>Marquee (teks berjalan)</strong></td><td>Pesan informasi yang dapat diubah dari dashboard admin</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════ ADMIN ══════════════ -->
+<section class="doc-section" id="admin">
+  <div class="section-label">
+    <div class="step-badge" style="background:rgba(249,224,0,0.12)">⚙</div>
+    <div>
+      <h2>Dashboard Admin</h2>
+      <p class="section-desc">Panel konfigurasi dan monitoring sistem</p>
+    </div>
+  </div>
+  <div class="section-divider"></div>
+
+  <div class="card">
+    <div class="card-heading"><div class="ch-icon" style="background:rgba(249,224,0,0.1)">🔐</div>Cara Login</div>
+    <ul class="step-list">
+      <li class="step-item">
+        <div class="step-num">1</div>
+        <div class="step-body"><p>Dari halaman utama (<code>/</code>), klik ikon <strong>roda gigi ⚙</strong> di pojok kanan atas. Atau akses langsung <code>http://&lt;IP&gt;:3000/admin</code>.</p></div>
+      </li>
+      <li class="step-item">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <p>Masukkan password admin:</p>
+          <div class="cb-wrap">
+            <div class="cb-header">
+              <div class="cb-dots"><span style="background:#ef4444"></span><span style="background:#f59e0b"></span><span style="background:#10b981"></span></div>
+              <span class="cb-lang">Password Default</span>
+            </div>
+            <div class="cb-body"><pre><span class="t-gold">admin@123</span></pre></div>
+          </div>
+        </div>
+      </li>
+      <li class="step-item">
+        <div class="step-num">3</div>
+        <div class="step-body"><p>Klik <strong>MASUK</strong> untuk mengakses dashboard.</p></div>
+      </li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <div class="card-heading"><div class="ch-icon" style="background:rgba(249,224,0,0.1)">📊</div>Fitur Dashboard Admin</div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Fitur</th><th>Fungsi</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Statistik Hari Ini</strong></td><td>Total tiket cetak, terlayani, menunggu, rata-rata waktu tunggu</td></tr>
+          <tr><td><strong>Grafik Per Jam</strong></td><td>Distribusi antrian berdasarkan jam dalam hari ini</td></tr>
+          <tr><td><strong>Manajemen Kategori</strong></td><td>Tambah, edit, hapus kategori layanan (prefix huruf A–Z)</td></tr>
+          <tr><td><strong>Manajemen Loket</strong></td><td>Tambah atau hapus nomor loket yang aktif</td></tr>
+          <tr><td><strong>Pengaturan Tiket</strong></td><td>Ubah nama instansi dan judul tiket yang dicetak</td></tr>
+          <tr><td><strong>Teks Marquee</strong></td><td>Ubah pesan berjalan di layar display ruang tunggu</td></tr>
+          <tr><td><strong>Riwayat Harian</strong></td><td>Statistik per hari, ekspor ke CSV</td></tr>
+          <tr><td><strong>Log Detail Hari Ini</strong></td><td>Semua tiket yang dicetak hari ini, bisa ekspor CSV</td></tr>
+          <tr><td><strong>Reset Antrian</strong></td><td>Reset semua nomor ke 0 (riwayat tetap tersimpan)</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="two-col">
+    <div class="card">
+      <div class="card-heading"><div class="ch-icon" style="background:rgba(249,224,0,0.1)">🏷</div>Ubah Judul &amp; Nama Instansi Tiket</div>
+      <ul class="step-list" style="margin-top:4px">
+        <li class="step-item">
+          <div class="step-num">1</div>
+          <div class="step-body"><p>Buka Dashboard Admin → gulir ke <strong>"Pengaturan Branding Tiket"</strong>.</p></div>
+        </li>
+        <li class="step-item">
+          <div class="step-num">2</div>
+          <div class="step-body"><p>Isi <strong>Nama Instansi</strong> (contoh: SMAN 1 Bandung) dan <strong>Judul Tiket</strong> (contoh: PPDB 2025).</p></div>
+        </li>
+        <li class="step-item">
+          <div class="step-num">3</div>
+          <div class="step-body"><p>Klik <strong>Simpan Pengaturan</strong>.</p></div>
+        </li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="card-heading"><div class="ch-icon" style="background:rgba(249,224,0,0.1)">🗂</div>Kelola Kategori Layanan</div>
+      <ul class="step-list" style="margin-top:4px">
+        <li class="step-item">
+          <div class="step-num">1</div>
+          <div class="step-body"><p>Buka Dashboard Admin → bagian <strong>"Manajemen Kategori &amp; Loket"</strong>.</p></div>
+        </li>
+        <li class="step-item">
+          <div class="step-num">2</div>
+          <div class="step-body"><p><strong>Tambah:</strong> isi prefix (1 huruf A–Z) + nama layanan → klik <strong>+ Tambah</strong>.</p></div>
+        </li>
+        <li class="step-item">
+          <div class="step-num">3</div>
+          <div class="step-body"><p><strong>Edit:</strong> klik ikon pensil. <strong>Hapus:</strong> klik ikon sampah (konfirmasi diperlukan).</p></div>
+        </li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════ TROUBLESHOOT ══════════════ -->
+<section class="doc-section" id="troubleshoot">
+  <div class="section-label">
+    <div class="step-badge" style="background:rgba(239,68,68,0.1)">🔧</div>
+    <div>
+      <h2>Troubleshooting</h2>
+      <p class="section-desc">Solusi cepat untuk masalah yang paling sering terjadi</p>
+    </div>
+  </div>
+  <div class="section-divider"></div>
+
+  <div class="card">
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Masalah</th><th>Penyebab</th><th>Solusi</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><strong>Klien tidak bisa akses server</strong></td>
+            <td>Firewall Windows memblokir</td>
+            <td>Izinkan <code>nomor-antrian.exe</code> di Windows Firewall untuk jaringan Private</td>
+          </tr>
+          <tr>
+            <td><strong>Suara antrian tidak berbunyi (pada alamat IP)</strong></td>
+            <td>Kebijakan Autoplay Browser / Keamanan HTTP</td>
+            <td>Lakukan klik sekali di mana saja pada layar display setelah dibuka (browser butuh interaksi pertama). Atau klik ikon gembok di sebelah URL → <strong>Site Settings</strong> → <strong>Sound</strong> → set ke <strong>Allow</strong>. Pastikan juga klien terhubung internet sekali agar suara Bahasa Indonesia berkualitas tinggi dari Google terunduh.</td>
+          </tr>
+          <tr>
+            <td><strong>Status "Server Terputus" (merah)</strong></td>
+            <td>Server belum jalan atau IP salah</td>
+            <td>Pastikan <code>nomor-antrian.exe</code> berjalan. Cek IP di jendela konsol</td>
+          </tr>
+          <tr>
+            <td><strong>Tiket tidak tercetak</strong></td>
+            <td>Printer bukan default / driver belum install</td>
+            <td>Set printer kasir 58mm sebagai <strong>default printer</strong>. Gunakan shortcut kiosk dengan flag <code>--kiosk-printing</code></td>
+          </tr>
+          <tr>
+            <td><strong>Tiket tercetak tapi dialog muncul</strong></td>
+            <td>Browser tidak menggunakan flag kiosk-printing</td>
+            <td>Buka kiosk via shortcut yang sudah menggunakan flag <code>--kiosk-printing</code>, bukan browser biasa</td>
+          </tr>
+          <tr>
+            <td><strong>Port 3000 sudah dipakai</strong></td>
+            <td>Aplikasi lain menggunakan port 3000</td>
+            <td>Server otomatis mencoba port berikutnya (3001, 3002...). Lihat port aktif di jendela konsol</td>
+          </tr>
+          <tr>
+            <td><strong>Aplikasi langsung tutup setelah dibuka</strong></td>
+            <td>Masa berlaku habis atau tanggal sistem bermasalah</td>
+            <td>Hubungi Tepilayar untuk perpanjangan lisensi</td>
+          </tr>
+          <tr>
+            <td><strong>Browser kiosk stuck / tidak bisa keluar</strong></td>
+            <td>Mode fullscreen kiosk Chrome/Edge</td>
+            <td>Tekan <code>Alt + F4</code> untuk menutup</td>
+          </tr>
+          <tr>
+            <td><strong>Antrian tidak reset di hari baru</strong></td>
+            <td>Server tidak berjalan saat tengah malam</td>
+            <td>Reset manual via <strong>Dashboard Admin → Reset Antrian</strong> di awal hari</td>
+          </tr>
+          <tr>
+            <td><strong>Data antrian hilang / corrupt</strong></td>
+            <td>File <code>queue_state.json</code> rusak</td>
+            <td>Hapus file <code>queue_state.json</code> di folder yang sama dengan .exe, lalu jalankan ulang</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════ REFERENSI URL ══════════════ -->
+<section class="doc-section" id="referensi">
+  <div class="section-label">
+    <div class="step-badge" style="background:rgba(16,185,129,0.1)">📋</div>
+    <div>
+      <h2>Referensi Cepat — URL Akses</h2>
+      <p class="section-desc">Ganti &lt;IP-SERVER&gt; dengan IP komputer server Anda</p>
+    </div>
+  </div>
+  <div class="section-divider"></div>
+
+  <div class="url-grid">
+    <div class="url-card">
+      <div class="uc-icon" style="background:rgba(249,224,0,0.1)">🏠</div>
+      <div>
+        <div class="uc-label">Menu Utama</div>
+        <div class="uc-url">http://&lt;IP&gt;:3000/</div>
+      </div>
+    </div>
+    <div class="url-card">
+      <div class="uc-icon" style="background:rgba(249,115,22,0.1)">🎫</div>
+      <div>
+        <div class="uc-label">Ambil Antrian (Kiosk)</div>
+        <div class="uc-url">http://&lt;IP&gt;:3000/kiosk</div>
+      </div>
+    </div>
+    <div class="url-card">
+      <div class="uc-icon" style="background:rgba(59,130,246,0.1)">👤</div>
+      <div>
+        <div class="uc-label">Kontrol Loket (Petugas)</div>
+        <div class="uc-url">http://&lt;IP&gt;:3000/counter</div>
+      </div>
+    </div>
+    <div class="url-card">
+      <div class="uc-icon" style="background:rgba(139,92,246,0.1)">📺</div>
+      <div>
+        <div class="uc-label">Layar Display (Di PC Server)</div>
+        <div class="uc-url">http://localhost:3000/display</div>
+      </div>
+    </div>
+    <div class="url-card">
+      <div class="uc-icon" style="background:rgba(249,224,0,0.1)">⚙</div>
+      <div>
+        <div class="uc-label">Dashboard Admin</div>
+        <div class="uc-url">http://&lt;IP&gt;:3000/admin</div>
+      </div>
+    </div>
+    <div class="url-card">
+      <div class="uc-icon" style="background:rgba(16,185,129,0.1)">🔗</div>
+      <div>
+        <div class="uc-label">Akses Lokal (Server)</div>
+        <div class="uc-url">http://localhost:3000</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="callout warn" style="margin-top:8px">
+    <span class="callout-icon">💡</span>
+    <div class="callout-body">
+      <div class="ct">IP Berubah?</div>
+      <p>Jika IP server berubah (setelah restart router), lihat IP terbaru di jendela konsol <code>nomor-antrian.exe</code> atau jalankan <code>ipconfig</code> di Command Prompt komputer server.</p>
+    </div>
+  </div>
+</section>
+
+</div><!-- /content-wrap -->
+
+<!-- FOOTER -->
+<footer class="doc-footer">
+  <div class="doc-footer-logo">
+    <div class="topbar-logo-icon" style="width:28px;height:28px;font-size:0.85rem">Q</div>
+    Nomor Antrian — Tepilayar
+  </div>
+  <div>
+    <p>Panduan Pengguna · Versi .exe · Masa berlaku s/d <strong>31 Agustus 2026</strong></p>
+  </div>
+  <div class="doc-footer-right">
+    <p>Dibuat dengan ⚡ menggunakan AI</p>
+  </div>
+</footer>
+
+</main>
+</div><!-- /page-wrap -->
+
+<script>
+  // Active nav highlight on scroll
+  const sections = document.querySelectorAll('section.doc-section');
+  const navItems = document.querySelectorAll('.nav-item[href]');
+
+  const obs = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        navItems.forEach(n => n.classList.remove('active'));
+        const target = document.querySelector(`.nav-item[href="#${e.target.id}"]`);
+        if (target) target.classList.add('active');
+      }
+    });
+  }, { rootMargin: '-20% 0px -70% 0px', threshold: 0 });
+
+  sections.forEach(s => obs.observe(s));
+</script>
+
+</body>
+</html>
